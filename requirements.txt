@@ -2,9 +2,9 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 
-# Database
-sqlalchemy==2.0.25
-alembic==1.13.1
+# Database - Python 3.13 compatible versions  
+sqlalchemy==2.0.19  # Confirmed working with Python 3.13
+alembic==1.12.1
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
