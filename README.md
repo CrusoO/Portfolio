@@ -58,13 +58,16 @@ pip install -r requirements.txt
 ### 4. Environment Configuration
 
 ```bash
-# Option 1: Quick setup (recommended)
-python scripts/setup.py
+# Copy environment template
+cp environment.example .env
 
-# Option 2: Manual setup
-cp .env.example .env
-# Edit .env with your Groq API key and other settings
+# Edit .env with your API keys:
+# GROQ_API_KEY=gsk_your_groq_api_key_here
+# ELEVENLABS_API_KEY=sk_your_elevenlabs_api_key_here
+# SECRET_KEY=your-secure-jwt-secret
 ```
+
+**Important:** Never commit your `.env` file with real API keys to GitHub!
 
 ### 5. Initialize Database
 

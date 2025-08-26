@@ -6,5 +6,6 @@ from .contact import Contact
 from .canvas import CanvasArt
 from .chat import ChatHistory
 from .note import Note
+from .audio import AudioCache, CustomAudio
 
-__all__ = ["Base", "User", "Review", "Contact", "CanvasArt", "ChatHistory", "Note"]
+__all__ = ["Base", "User", "Review", "Contact", "CanvasArt", "ChatHistory", "Note", "AudioCache", "CustomAudio"]

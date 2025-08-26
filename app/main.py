@@ -10,7 +10,7 @@ import uvicorn
 
 from app.core.config import settings
 from app.core.database import create_tables
-from app.api import auth, chat, reviews, contact, canvas, notes
+from app.api import auth, chat, reviews, contact, canvas, notes, audio
 
 # Create FastAPI app
 app = FastAPI(
@@ -34,6 +34,11 @@ app.add_middleware(
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Audio file serving
+if not os.path.exists(settings.AUDIO_DIR):
+    os.makedirs(settings.AUDIO_DIR, exist_ok=True)
+app.mount("/storage/audio", StaticFiles(directory=settings.AUDIO_DIR), name="audio")
+
 # Include routers
 app.include_router(auth.router)
 app.include_router(chat.router)
@@ -41,6 +46,7 @@ app.include_router(reviews.router)
 app.include_router(contact.router)
 app.include_router(canvas.router)
 app.include_router(notes.router)
+app.include_router(audio.router)
 
 
 @app.on_event("startup")
@@ -92,6 +98,15 @@ async def root():
                 "save": "/api/canvas/save",
                 "list": "/api/canvas",
                 "detail": "/api/canvas/{id}"
+            },
+            "audio": {
+                "tts": "/api/audio/tts",
+                "cache": "/api/audio/cache/{text_hash}",
+                "cache_stats": "/api/audio/cache/stats",
+                "cache_cleanup": "/api/audio/cache/cleanup",
+                "upload_custom": "/api/audio/custom",
+                "list_custom": "/api/audio/custom",
+                "search_custom": "/api/audio/custom/search"
             }
         }
     }

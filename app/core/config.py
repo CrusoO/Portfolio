@@ -28,9 +28,15 @@ class Settings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     AI_PROVIDER: str = "groq"  # "groq", "openai", or "fallback"
     
+    # ElevenLabs TTS settings
+    ELEVENLABS_API_KEY: Optional[str] = None
+    DEFAULT_VOICE_ID: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel voice (default ElevenLabs voice)
+    
     # File upload settings
     UPLOAD_DIR: str = "uploads"
+    AUDIO_DIR: str = "storage/audio"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    ALLOWED_AUDIO_TYPES: list = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/m4a", "audio/ogg"]
     
     # Server settings
     HOST: str = "0.0.0.0"
