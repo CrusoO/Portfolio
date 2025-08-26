@@ -36,7 +36,7 @@ class NoteResponse(NoteBase):
     updated_at: Optional[datetime] = None
     
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class NoteListResponse(BaseModel):
@@ -48,4 +48,4 @@ class NoteListResponse(BaseModel):
     read_time: int
 
     class Config:
-        from_attributes = True
+        orm_mode = True
