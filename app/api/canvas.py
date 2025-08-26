@@ -1,13 +1,13 @@
 """
 Canvas art endpoints for saving and retrieving artwork
 """
-from typing import List
-from fastapi import APIRouter, Depends
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.canvas import CanvasArt
-from app.schemas.canvas import CanvasArtCreate, CanvasArtResponse
+from app.schemas.canvas import CanvasArtCreate, CanvasArtResponse, CanvasGalleryResponse, CanvasArtUpdate
 
 router = APIRouter(prefix="/api/canvas", tags=["Canvas Art"])
 
@@ -15,10 +15,16 @@ router = APIRouter(prefix="/api/canvas", tags=["Canvas Art"])
 @router.post("/save", response_model=dict)
 async def save_canvas(artwork_data: CanvasArtCreate, db: Session = Depends(get_db)):
     """Save canvas artwork"""
+    # Generate image URL (in production, you'd save to CDN/S3)
+    image_url = f"/storage/images/artwork_{int(__import__('time').time() * 1000)}.png"
+    
     artwork = CanvasArt(
-        username=artwork_data.username,
+        username=artwork_data.username or "Anonymous",
         title=artwork_data.title,
-        image_data=artwork_data.image_data
+        image_data=artwork_data.image_data,
+        image_url=image_url,
+        contributors=artwork_data.contributors or [],
+        is_public=artwork_data.is_public if artwork_data.is_public is not None else True
     )
     
     db.add(artwork)
@@ -35,7 +41,12 @@ async def save_canvas(artwork_data: CanvasArtCreate, db: Session = Depends(get_d
 @router.put("/save/{artwork_id}", response_model=dict)
 async def update_canvas(artwork_id: str, artwork_data: CanvasArtUpdate, db: Session = Depends(get_db)):
     """Update existing canvas artwork"""
-    artwork = db.query(CanvasArt).filter(CanvasArt.id == artwork_id).first()
+    # Handle both string and integer IDs
+    if artwork_id.startswith("artwork_"):
+        db_id = artwork_id.replace("artwork_", "")
+        artwork = db.query(CanvasArt).filter(CanvasArt.id == int(db_id)).first()
+    else:
+        artwork = db.query(CanvasArt).filter(CanvasArt.id == int(artwork_id)).first()
     
     if not artwork:
         raise HTTPException(status_code=404, detail="Artwork not found")
@@ -46,7 +57,7 @@ async def update_canvas(artwork_id: str, artwork_data: CanvasArtUpdate, db: Sess
     if artwork_data.image_data is not None:
         artwork.image_data = artwork_data.image_data
     if artwork_data.contributors is not None:
-        artwork.contributors = [c.dict() for c in artwork_data.contributors]
+        artwork.contributors = artwork_data.contributors
     if artwork_data.is_public is not None:
         artwork.is_public = artwork_data.is_public
     
@@ -87,7 +98,7 @@ async def get_gallery(
             "username": artwork.username,
             "title": artwork.title,
             "image_url": artwork.image_url or f"/storage/images/artwork_{artwork.id}.png",
-            "contributors": artwork.contributors,
+            "contributors": artwork.contributors or [],
             "created_at": artwork.created_at.isoformat() + 'Z',
             "is_public": artwork.is_public
         })
@@ -118,9 +129,9 @@ async def get_artwork_for_editing(artwork_id: str, db: Session = Depends(get_db)
         "username": artwork.username,
         "title": artwork.title,
         "image_data": artwork.image_data,
-        "contributors": artwork.contributors,
+        "contributors": artwork.contributors or [],
         "created_at": artwork.created_at.isoformat() + 'Z',
-        "updated_at": artwork.updated_at.isoformat() + 'Z',
+        "updated_at": artwork.updated_at.isoformat() + 'Z' if artwork.updated_at else artwork.created_at.isoformat() + 'Z',
         "is_public": artwork.is_public
     }
 
@@ -128,10 +139,15 @@ async def get_artwork_for_editing(artwork_id: str, db: Session = Depends(get_db)
 @router.delete("/delete/{artwork_id}")
 async def delete_artwork(artwork_id: str, db: Session = Depends(get_db)):
     """Delete artwork"""
-    artwork = db.query(CanvasArt).filter(CanvasArt.id == artwork_id).first()
+    # Handle both string and integer IDs
+    if artwork_id.startswith("artwork_"):
+        db_id = artwork_id.replace("artwork_", "")
+        artwork = db.query(CanvasArt).filter(CanvasArt.id == int(db_id)).first()
+    else:
+        artwork = db.query(CanvasArt).filter(CanvasArt.id == int(artwork_id)).first()
     
     if not artwork:
-        return {"message": "Artwork not found"}
+        raise HTTPException(status_code=404, detail="Artwork not found")
     
     db.delete(artwork)
     db.commit()
