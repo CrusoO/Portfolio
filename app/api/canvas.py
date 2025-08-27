@@ -41,12 +41,15 @@ async def save_canvas(artwork_data: CanvasArtCreate, db: Session = Depends(get_d
 @router.put("/save/{artwork_id}", response_model=dict)
 async def update_canvas(artwork_id: str, artwork_data: CanvasArtUpdate, db: Session = Depends(get_db)):
     """Update existing canvas artwork"""
-    # Handle both string and integer IDs
-    if artwork_id.startswith("artwork_"):
-        db_id = artwork_id.replace("artwork_", "")
-        artwork = db.query(CanvasArt).filter(CanvasArt.id == int(db_id)).first()
-    else:
-        artwork = db.query(CanvasArt).filter(CanvasArt.id == int(artwork_id)).first()
+    try:
+        # Handle both string and integer IDs
+        if artwork_id.startswith("artwork_"):
+            db_id = artwork_id.replace("artwork_", "")
+            artwork = db.query(CanvasArt).filter(CanvasArt.id == int(db_id)).first()
+        else:
+            artwork = db.query(CanvasArt).filter(CanvasArt.id == int(artwork_id)).first()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid artwork ID format: {artwork_id}")
     
     if not artwork:
         raise HTTPException(status_code=404, detail="Artwork not found")

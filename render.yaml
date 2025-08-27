@@ -3,12 +3,20 @@ services:
     name: cruso-portfolio-backend
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.10"
       - key: SECRET_KEY
         generateValue: true
+      - key: DEBUG
+        value: "false"
       - key: CORS_ORIGINS
         value: "*"
+      - key: DATABASE_URL
+        value: "sqlite:///./portfolio.db"
     healthCheckPath: /health
+    disk:
+      name: portfolio-data
+      mountPath: /opt/render/project/src
+      sizeGB: 1

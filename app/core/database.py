@@ -38,4 +38,11 @@ def get_db():
 
 def create_tables():
     """Create all tables"""
-    Base.metadata.create_all(bind=engine)
+    try:
+        # Import all models to ensure they are registered with Base
+        from app.models import user, chat, review, contact, note, canvas, bot_voice
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"Error creating database tables: {e}")
+        raise

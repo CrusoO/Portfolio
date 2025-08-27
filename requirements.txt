@@ -19,6 +19,7 @@ email-validator==2.1.0
 # AI Integration (optional)
 openai==1.6.1
 groq==0.4.1
+elevenlabs==0.2.27
 
 # Development tools
 python-dotenv==1.0.0

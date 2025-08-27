@@ -5,6 +5,10 @@ from .contact import ContactCreate, ContactResponse
 from .canvas import CanvasArtCreate, CanvasArtResponse
 from .chat import ChatMessage, ChatResponse
 from .note import NoteCreate, NoteUpdate, NoteResponse
+from .bot_voice import (
+    BotVoiceSearchRequest, BotVoiceSearchResponse, BotVoiceUploadResponse,
+    BotVoiceListResponse, BotVoiceUpdateRequest, BotVoiceDeleteResponse
+)
 
 __all__ = [
     "UserCreate", "UserUpdate", "UserResponse", "UserLogin",
@@ -12,5 +16,7 @@ __all__ = [
     "ContactCreate", "ContactResponse", 
     "CanvasArtCreate", "CanvasArtResponse",
     "ChatMessage", "ChatResponse",
-    "NoteCreate", "NoteUpdate", "NoteResponse"
+    "NoteCreate", "NoteUpdate", "NoteResponse",
+    "BotVoiceSearchRequest", "BotVoiceSearchResponse", "BotVoiceUploadResponse",
+    "BotVoiceListResponse", "BotVoiceUpdateRequest", "BotVoiceDeleteResponse"
 ]

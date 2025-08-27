@@ -14,26 +14,23 @@ def get_ai_response(user_message: str, username: str = "Anonymous") -> str:
     """
     message_lower = user_message.lower()
     
-    system_prompt = f"""You are Cruso, Robinson's AI assistant for his portfolio website. You help visitors explore his projects, skills, and work. Keep responses friendly, helpful, and focused on Robinson's portfolio. The user's name is {username}.
+    system_prompt = f"""I'm Cruso, Robinson's AI assistant. I tell short, friendly stories about his work to {username}.
 
-Robinson is a passionate full-stack developer who specializes in:
-- Python, JavaScript, React, FastAPI
-- AI/ML integration and modern web development
-- Creating user-friendly solutions that combine technical expertise with creative problem-solving
+Robinson builds web apps with Python, JavaScript, React, and FastAPI. His story: started coding, fell in love with making complex things simple. 
 
-His notable projects include:
-- CodeSensei: An AI-powered education platform
-- AGRO_Frontend: Agriculture management system
-- This portfolio backend with AI chat integration
+Key projects:
+- CodeSensei: AI teaches coding
+- AGRO_Frontend: Helps farmers  
+- This chat: AI meets portfolio
 
-Keep responses concise (under 150 words), engaging, and always guide users to explore more of Robinson's work."""
+Keep responses under 80 words, narrative style, like telling a quick story. Be warm but concise."""
 
     # Try Groq first (faster and often better)
     if settings.AI_PROVIDER == "groq" and settings.GROQ_API_KEY:
         try:
             client = Groq(api_key=settings.GROQ_API_KEY)
             response = client.chat.completions.create(
-                model="mixtral-8x7b-32768",  # Fast and capable model
+                model="llama3-8b-8192",  # Current working model
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
@@ -65,24 +62,24 @@ Keep responses concise (under 150 words), engaging, and always guide users to ex
             print(f"OpenAI API error: {e}")
             # Fall back to predefined responses
     
-    # Predefined responses (fallback)
+    # Short narrative fallback responses
     if any(word in message_lower for word in ["hi", "hello", "hey"]):
-        return f"Hey {username}! I'm Cruso, Robinson's AI assistant. How can I help you explore his portfolio?"
+        return f"Hi {username}! I'm Cruso. Robinson built me to share his coding journey. What interests you?"
     
     elif any(word in message_lower for word in ["project", "projects", "work"]):
-        return "Robinson has amazing projects like CodeSensei (AI education platform), AGRO_Frontend (agriculture management), and this portfolio backend! 🚀 Each showcases different skills in web development, AI integration, and user experience design."
+        return f"Robinson's story: He started with simple ideas, then built CodeSensei (AI teaching), AGRO_Frontend (farming tech), and me! Each project solved real problems."
     
     elif any(word in message_lower for word in ["skill", "skills", "technology", "tech"]):
-        return "Robinson is skilled in Python, JavaScript, React, FastAPI, AI/ML, database design, and full-stack development. He loves creating solutions that combine modern web tech with AI capabilities! 💻"
+        return f"Robinson's toolkit: Python for logic, JavaScript for interaction, React for interfaces, FastAPI for speed. He learned each one to solve different challenges."
     
     elif any(word in message_lower for word in ["paint", "canvas", "art", "draw"]):
-        return "The paint canvas is one of my favorite features! You can create digital art just like MS Paint, and it saves your creations. Try it out and show off your artistic side! 🎨"
+        return f"The paint canvas? Robinson thought: 'What if art met code?' So he built browser-based drawing that saves your creations. Try it!"
     
     elif any(word in message_lower for word in ["contact", "reach", "connect"]):
-        return "You can reach Robinson through the contact form on his portfolio! He's always open to discussing new opportunities, collaborations, or just chatting about technology. 📧"
+        return f"Robinson's always curious about new ideas, {username}. Use the contact form - he genuinely enjoys tech conversations."
     
     elif any(word in message_lower for word in ["about", "who", "robinson"]):
-        return "Robinson is a passionate full-stack developer who loves creating innovative web applications. He combines technical expertise with creative problem-solving to build user-friendly solutions! 👨‍💻"
+        return f"Robinson's journey: Started coding, discovered he loved making complex things simple. Now builds web apps that just... work."
     
     else:
-        return f"That's interesting, {username}! I'm here to help you explore Robinson's work and skills. Feel free to ask me about his projects, skills, or use the interactive features like the paint canvas!"
+        return f"Interesting question, {username}! I love telling Robinson's story. What part of his work catches your attention?"

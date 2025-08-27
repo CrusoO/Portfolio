@@ -1,5 +1,6 @@
 """
 FastAPI application entry point for Robinson's Portfolio Backend
+Production-ready configuration with proper error handling and logging
 """
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +11,7 @@ import uvicorn
 
 from app.core.config import settings
 from app.core.database import create_tables
-from app.api import auth, chat, reviews, contact, canvas, notes
+from app.api import auth, chat, reviews, contact, canvas, notes, voice, bot_audio
 
 # Create FastAPI app
 app = FastAPI(
@@ -21,13 +22,22 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS Middleware
+# CORS Middleware - Fix CORS configuration
+cors_origins = []
+if settings.CORS_ORIGINS == "*":
+    cors_origins = ["*"]
+elif "," in settings.CORS_ORIGINS:
+    cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
+else:
+    cors_origins = [settings.CORS_ORIGINS]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS.split(",") if "," in settings.CORS_ORIGINS else [settings.CORS_ORIGINS],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Static files
@@ -41,12 +51,19 @@ app.include_router(reviews.router)
 app.include_router(contact.router)
 app.include_router(canvas.router)
 app.include_router(notes.router)
+app.include_router(voice.router)
+app.include_router(bot_audio.router)
 
 
-@app.on_event("startup")
+@app.on_event("startup") 
 async def startup_event():
     """Initialize database on startup"""
-    create_tables()
+    try:
+        create_tables()
+        print("✅ Database tables created successfully")
+    except Exception as e:
+        print(f"❌ Database initialization failed: {e}")
+        raise
 
 
 @app.exception_handler(500)
@@ -77,7 +94,9 @@ async def root():
             },
             "notes": {
                 "list": "/api/notes",
-                "detail": "/api/notes/{id}"
+                "detail": "/api/notes/{id}",
+                "voice_create": "/api/notes/{id}/voice",
+                "voice_play": "/api/notes/{id}/voice/play"
             },
             "reviews": {
                 "submit": "/api/reviews",
@@ -92,6 +111,17 @@ async def root():
                 "save": "/api/canvas/save",
                 "list": "/api/canvas",
                 "detail": "/api/canvas/{id}"
+            },
+            "voice": {
+                "text_to_speech": "/api/voice/text-to-speech",
+                "voices": "/api/voice/voices",
+                "test": "/api/voice/test"
+            },
+            "bot_audio": {
+                "search": "/api/audio/bot/search",
+                "upload": "/api/audio/bot/upload",
+                "list": "/api/audio/bot/list",
+                "play": "/api/audio/bot/play/{id}"
             }
         }
     }

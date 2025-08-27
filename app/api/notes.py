@@ -1,15 +1,22 @@
 """
 Notes/blog endpoints for articles and posts
 """
+import os
+import base64
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
+from elevenlabs import generate, set_api_key, Voice, VoiceSettings
+import io
 
 from app.core.database import get_db
 from app.core.security import get_admin_user
+from app.core.config import settings
 from app.models.note import Note
 from app.models.user import User
 from app.schemas.note import NoteCreate, NoteUpdate, NoteResponse, NoteListResponse
+from app.schemas.voice import VoiceNoteCreate, VoiceNoteResponse, VoiceNoteUpdate
 
 router = APIRouter(prefix="/api/notes", tags=["Notes"])
 
@@ -124,3 +131,229 @@ async def delete_note(
     db.commit()
     
     return {"message": "Note deleted successfully"}
+
+
+# Voice Note Endpoints
+
+@router.post("/{note_id}/voice", response_model=VoiceNoteResponse)
+async def create_voice_note(
+    note_id: int,
+    voice_data: VoiceNoteCreate,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user)
+):
+    """Create voice note for a specific note (admin only)"""
+    
+    if not settings.ELEVENLABS_API_KEY:
+        raise HTTPException(
+            status_code=400, 
+            detail="ElevenLabs API key not configured"
+        )
+    
+    # Find the note
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    try:
+        # Set ElevenLabs API key
+        set_api_key(settings.ELEVENLABS_API_KEY)
+        
+        # Use provided voice_id or default
+        voice_id = voice_data.voice_id or settings.ELEVENLABS_VOICE_ID
+        
+        # Create voice settings
+        voice_settings = VoiceSettings(
+            stability=voice_data.stability,
+            similarity_boost=voice_data.similarity_boost,
+            style=voice_data.style,
+            use_speaker_boost=voice_data.use_speaker_boost
+        )
+        
+        # Generate audio
+        audio = generate(
+            text=voice_data.voice_text,
+            voice=Voice(voice_id=voice_id, settings=voice_settings),
+            model="eleven_multilingual_v2"
+        )
+        
+        # Create uploads directory if it doesn't exist
+        voice_dir = os.path.join(settings.UPLOAD_DIR, "voices")
+        os.makedirs(voice_dir, exist_ok=True)
+        
+        # Save audio file
+        voice_filename = f"note_{note_id}_voice.mp3"
+        voice_file_path = os.path.join(voice_dir, voice_filename)
+        
+        with open(voice_file_path, "wb") as f:
+            f.write(audio)
+        
+        # Calculate audio duration (approximate)
+        audio_duration = len(audio) // 16000  # Rough estimate
+        
+        # Update note with voice information
+        note.has_voice_note = "true"
+        note.voice_file_path = voice_file_path
+        note.voice_transcript = voice_data.voice_text
+        note.voice_duration = audio_duration
+        
+        db.commit()
+        db.refresh(note)
+        
+        return VoiceNoteResponse(
+            success=True,
+            message="Voice note created successfully",
+            note_id=note_id,
+            voice_file_path=voice_file_path,
+            voice_duration=audio_duration
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create voice note: {str(e)}"
+        )
+
+
+@router.get("/{note_id}/voice/play")
+async def play_voice_note(note_id: int, db: Session = Depends(get_db)):
+    """Play voice note for a specific note"""
+    
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    if note.has_voice_note != "true" or not note.voice_file_path:
+        raise HTTPException(status_code=404, detail="No voice note found for this note")
+    
+    if not os.path.exists(note.voice_file_path):
+        raise HTTPException(status_code=404, detail="Voice file not found")
+    
+    return FileResponse(
+        path=note.voice_file_path,
+        media_type="audio/mpeg",
+        filename=f"note_{note_id}_voice.mp3"
+    )
+
+
+@router.put("/{note_id}/voice", response_model=VoiceNoteResponse)
+async def update_voice_note(
+    note_id: int,
+    voice_data: VoiceNoteUpdate,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user)
+):
+    """Update voice note for a specific note (admin only)"""
+    
+    if not settings.ELEVENLABS_API_KEY:
+        raise HTTPException(
+            status_code=400, 
+            detail="ElevenLabs API key not configured"
+        )
+    
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    if note.has_voice_note != "true":
+        raise HTTPException(status_code=404, detail="No voice note exists for this note")
+    
+    # If no voice_text provided, don't regenerate
+    if not voice_data.voice_text:
+        return VoiceNoteResponse(
+            success=True,
+            message="No changes made - voice text not provided",
+            note_id=note_id,
+            voice_file_path=note.voice_file_path,
+            voice_duration=note.voice_duration
+        )
+    
+    try:
+        set_api_key(settings.ELEVENLABS_API_KEY)
+        
+        voice_id = voice_data.voice_id or settings.ELEVENLABS_VOICE_ID
+        
+        voice_settings = VoiceSettings(
+            stability=voice_data.stability or 0.5,
+            similarity_boost=voice_data.similarity_boost or 0.75,
+            style=voice_data.style or 0.0,
+            use_speaker_boost=voice_data.use_speaker_boost or True
+        )
+        
+        # Generate new audio
+        audio = generate(
+            text=voice_data.voice_text,
+            voice=Voice(voice_id=voice_id, settings=voice_settings),
+            model="eleven_multilingual_v2"
+        )
+        
+        # Update existing file
+        if note.voice_file_path and os.path.exists(note.voice_file_path):
+            with open(note.voice_file_path, "wb") as f:
+                f.write(audio)
+        else:
+            # Create new file
+            voice_dir = os.path.join(settings.UPLOAD_DIR, "voices")
+            os.makedirs(voice_dir, exist_ok=True)
+            voice_filename = f"note_{note_id}_voice.mp3"
+            voice_file_path = os.path.join(voice_dir, voice_filename)
+            
+            with open(voice_file_path, "wb") as f:
+                f.write(audio)
+            
+            note.voice_file_path = voice_file_path
+        
+        # Update note
+        audio_duration = len(audio) // 16000
+        note.voice_transcript = voice_data.voice_text
+        note.voice_duration = audio_duration
+        
+        db.commit()
+        db.refresh(note)
+        
+        return VoiceNoteResponse(
+            success=True,
+            message="Voice note updated successfully",
+            note_id=note_id,
+            voice_file_path=note.voice_file_path,
+            voice_duration=audio_duration
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update voice note: {str(e)}"
+        )
+
+
+@router.delete("/{note_id}/voice")
+async def delete_voice_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user)
+):
+    """Delete voice note for a specific note (admin only)"""
+    
+    note = db.query(Note).filter(Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    if note.has_voice_note != "true":
+        raise HTTPException(status_code=404, detail="No voice note exists for this note")
+    
+    # Delete physical file
+    if note.voice_file_path and os.path.exists(note.voice_file_path):
+        try:
+            os.remove(note.voice_file_path)
+        except Exception as e:
+            print(f"Error deleting voice file: {e}")
+    
+    # Update note
+    note.has_voice_note = "false"
+    note.voice_file_path = None
+    note.voice_transcript = None
+    note.voice_duration = None
+    
+    db.commit()
+    
+    return {"message": "Voice note deleted successfully"}

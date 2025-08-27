@@ -13,6 +13,9 @@ class NoteBase(BaseModel):
     category: str = "General"
     tags: Optional[List[str]] = None
     read_time: int = 5
+    has_voice_note: str = "false"
+    voice_transcript: Optional[str] = None
+    voice_duration: Optional[int] = None
 
 
 class NoteCreate(NoteBase):
@@ -27,11 +30,15 @@ class NoteUpdate(BaseModel):
     tags: Optional[List[str]] = None
     read_time: Optional[int] = None
     is_published: Optional[str] = None
+    has_voice_note: Optional[str] = None
+    voice_transcript: Optional[str] = None
+    voice_duration: Optional[int] = None
 
 
 class NoteResponse(NoteBase):
     id: int
     is_published: str
+    voice_file_path: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     

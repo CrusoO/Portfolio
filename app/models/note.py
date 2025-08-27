@@ -17,6 +17,13 @@ class Note(Base):
     tags = Column(JSON, nullable=True)  # List of tags as JSON
     read_time = Column(Integer, nullable=False, default=5)  # in minutes
     is_published = Column(String(10), nullable=False, default="draft")  # draft, published, archived
+    
+    # Voice-related fields
+    has_voice_note = Column(String(5), nullable=False, default="false")  # "true" or "false"
+    voice_file_path = Column(String(500), nullable=True)  # Path to stored voice file
+    voice_transcript = Column(Text, nullable=True)  # Transcript of the voice note
+    voice_duration = Column(Integer, nullable=True)  # Duration in seconds
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
